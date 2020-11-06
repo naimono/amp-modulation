@@ -6,10 +6,9 @@ const int kNumPresets = 1;
 
 enum EParams
 {
-    kMicDist,
-    kAngle,
     kDepth,
     kFreq,
+    kProb,
     kNumParams
 };
 
@@ -26,7 +25,7 @@ public:
     ~AmpMod();
     void ProcessBlock(sample** inputs, sample** outputs, int nFrames) override;
     void OnReset() override;
-//    void OnParamChange(int paramIdx) override;
+    void OnParamChange(int paramIdx) override;
     void getBufferSize();
     void initBuffer();
     

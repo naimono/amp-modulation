@@ -8,6 +8,7 @@ AmpMod::AmpMod(const InstanceInfo& info)
 {
     GetParam(kDepth)->InitDouble("Depth", 50., 0., 100., 0.01, "%");
     GetParam(kFreq)->InitDouble("Frequency", 1., 1., 25., 0.1, "Hz");
+    GetParam(kProb)->InitDouble("Tri-Sq", 50., 0., 100., 0.1, "%");
 
 #if IPLUG_EDITOR // http://bit.ly/2S64BDd
     mMakeGraphicsFunc = [&]() {
@@ -19,10 +20,11 @@ AmpMod::AmpMod(const InstanceInfo& info)
         pGraphics->AttachPanelBackground(COLOR_WHITE);
         pGraphics->LoadFont("Roboto-Regular", ROBOTO_FN);
         const IRECT b = pGraphics->GetBounds();
-        pGraphics->AttachControl(new ITextControl(b.GetMidVPadded(50), "Amplitude Modulation", IText(50)));
+        pGraphics->AttachControl(new ITextControl(b.GetMidVPadded(50).GetVShifted(-60), "Amplitude Modulation", IText(30)));
         
-        pGraphics->AttachControl(new IVKnobControl(b.GetCentredInside(100).GetVShifted(-100).GetHShifted(-50), kDepth));
-        pGraphics->AttachControl(new IVKnobControl(b.GetCentredInside(100).GetVShifted(-100).GetHShifted(-150), kFreq));
+        pGraphics->AttachControl(new IVKnobControl(b.GetCentredInside(100).GetVShifted(20).GetHShifted(0), kDepth));
+        pGraphics->AttachControl(new IVKnobControl(b.GetCentredInside(100).GetVShifted(20).GetHShifted(-90), kFreq));
+        pGraphics->AttachControl(new IVKnobControl(b.GetCentredInside(100).GetVShifted(20).GetHShifted(90), kProb));
   };
 #endif
 }
