@@ -7,7 +7,7 @@ AmpMod::AmpMod(const InstanceInfo& info)
 : Plugin(info, MakeConfig(kNumParams, kNumPresets))
 {
     GetParam(kDepth)->InitDouble("Depth", 50., 0., 100., 0.01, "%");
-    GetParam(kFreq)->InitDouble("Frequency", 1., 1., 25., 0.1, "Hz");
+    GetParam(kFreq)->InitFrequency("Frequency", 1., 1., 25., 0.1);
     GetParam(kProb)->InitDouble("Tri-Sq", 50., 0., 100., 0.1, "%");
 
 #if IPLUG_EDITOR // http://bit.ly/2S64BDd
@@ -47,7 +47,7 @@ void AmpMod::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
         // Multiply buffer coefficients with output
         *out1 = (depth * mAmp1) * *in1;
         *out2 = (depth * mAmp2) * *in2;
-        
+
         //increment the read index, wrapping if it goes out of bounds.
         mReadIndex1++;
         if(mReadIndex1 >= mBufferSize1) {
@@ -66,12 +66,13 @@ void AmpMod::OnReset() {
     
     mReadIndex1 = 0;
     mReadIndex2 = 0;
-    
+    mFreq = 1.;
     getAmp();
 }
 
 void AmpMod::initPos() {
     mFreq = GetParam(kFreq)->Value();
+    mFreq = floor(mFreq * 10 + 0.5)/10;
     
     // Find the global position in the project
     int pos1 = (int) GetSamplePos();
@@ -93,23 +94,22 @@ void AmpMod::initPos() {
 }
 
 void AmpMod::getAmp() {
-    mProb = GetParam(kProb)->Value();
+    mProb = GetParam(kProb)->Value()/100;
     
     // Get triangle and square wave amplitude
     if (mReadIndex1 < floor(mBufferSize1/2)) {
-      mAmp1 = mProb*abs((2/M_PI)*asin(sin(M_PI*mFreq*mReadIndex1))) + (1-mProb);
-      mAmp2 = mProb*abs((2/M_PI)*asin(sin(M_PI*mFreq*mReadIndex2))) + (1-mProb);
+        mAmp1 = mProb*abs((2/M_PI)*asin(sin(M_PI*mFreq*mReadIndex1/GetSampleRate()))) + (1-mProb);
+        mAmp2 = mProb*abs((2/M_PI)*asin(sin(M_PI*mFreq*mReadIndex2/GetSampleRate()))) + (1-mProb);
     }
     else {
-      mAmp1 = mProb*abs((2/M_PI)*asin(sin(M_PI*mFreq*mReadIndex1)));
-      mAmp2 = mProb*abs((2/M_PI)*asin(sin(M_PI*mFreq*mReadIndex2)));
+      mAmp1 = mProb*abs((2/M_PI)*asin(sin(M_PI*mFreq*mReadIndex1/GetSampleRate())));
+      mAmp2 = mProb*abs((2/M_PI)*asin(sin(M_PI*mFreq*mReadIndex2/GetSampleRate())));
     }
 }
 
 void AmpMod::OnParamChange(int paramIdx) {
-    mReadIndex1 = 0;
-    mReadIndex2 = 0;
-    
+    mFreq = 1.;
+    initPos();
     getAmp();
 }
 #endif

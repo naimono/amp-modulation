@@ -30,7 +30,7 @@ public:
     
 private:
     double mDepth = 0.;
-    double mFreq = 0.;
+    double mFreq = 1.;
     double mProb = 0.;
     
     double mDelaySam1 = 0.;
