@@ -22,27 +22,27 @@ public:
 
 #if IPLUG_DSP // http://bit.ly/2S64BDd
 public:
-    ~AmpMod();
     void ProcessBlock(sample** inputs, sample** outputs, int nFrames) override;
     void OnReset() override;
     void OnParamChange(int paramIdx) override;
-    void getBufferSize();
-    void initBuffer();
+    void initPos();
+    void getAmp();
     
 private:
     double mDepth = 0.;
-    double mFreq = 0.;
+    double mFreq = 1.;
+    double mProb = 0.;
     
     double mDelaySam1 = 0.;
     double mDelaySam2 = 0.;
-    
-    sample* mpBuffer1 = NULL;
-    sample* mpBuffer2 = NULL;
     
     int mReadIndex1 = 0;
     int mReadIndex2 = 0;
     
     int mBufferSize1 = 0;
     int mBufferSize2 = 0;
+    
+    double mAmp1 = 0.;
+    double mAmp2 = 0.;
 #endif
 };

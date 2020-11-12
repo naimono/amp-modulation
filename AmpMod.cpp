@@ -7,7 +7,7 @@ AmpMod::AmpMod(const InstanceInfo& info)
 : Plugin(info, MakeConfig(kNumParams, kNumPresets))
 {
     GetParam(kDepth)->InitDouble("Depth", 50., 0., 100., 0.01, "%");
-    GetParam(kFreq)->InitDouble("Frequency", 1., 1., 25., 0.1, "Hz");
+    GetParam(kFreq)->InitFrequency("Frequency", 1., 1., 25., 0.1);
     GetParam(kProb)->InitDouble("Tri-Sq", 50., 0., 100., 0.1, "%");
 
 #if IPLUG_EDITOR // http://bit.ly/2S64BDd
@@ -30,16 +30,6 @@ AmpMod::AmpMod(const InstanceInfo& info)
 }
 
 #if IPLUG_DSP
-AmpMod::~AmpMod() {
-    // Delete buffer if already there
-    if(mpBuffer1) {
-        delete [] mpBuffer1;
-    }
-    if(mpBuffer2) {
-        delete [] mpBuffer2;
-    }
-}
-
 void AmpMod::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
 {
     sample* in1 = inputs[0];
@@ -52,14 +42,12 @@ void AmpMod::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
     
     for (int s = 0; s < nFrames; ++s, ++in1, ++in2, ++out1, ++out2)
     {
-        // Read Delayed output
-        sample yn1 = mpBuffer1[mReadIndex1];
-        sample yn2 = mpBuffer1[mReadIndex2];
+        getAmp();
         
         // Multiply buffer coefficients with output
-        *out1 = (depth * yn1) * *in1;
-        *out2 = (depth * yn2) * *in2;
-        
+        *out1 = (depth * mAmp1) * *in1;
+        *out2 = (depth * mAmp2) * *in2;
+
         //increment the read index, wrapping if it goes out of bounds.
         mReadIndex1++;
         if(mReadIndex1 >= mBufferSize1) {
@@ -72,70 +60,56 @@ void AmpMod::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
     }
 }
 
-void AmpMod::initBuffer() {
-    // Initialize buffers with coefficients
-    
-    if(mpBuffer1) {
-        for (int i = 0; i < mBufferSize1; i++) {
-            mpBuffer1[i] = abs((2/M_PI)*asin(sin(M_PI*mFreq*i)));
-        }
-    }
-    mReadIndex1 = 0;
-    
-    if(mpBuffer2) {
-        for (int i = 0; i < mBufferSize2; i++) {
-            mpBuffer2[i] = abs((2/M_PI)*asin(sin(M_PI*mFreq*i)));
-        }
-    }
-    mReadIndex2 = 0;
-}
 
 void AmpMod::OnReset() {
     TRACE;
     
-    // Set Buffer Size
-    getBufferSize();
-    
-    // Delete buffer if already there
-    if(mpBuffer1) {
-        delete [] mpBuffer1;
-    }
-    if(mpBuffer2) {
-        delete [] mpBuffer2;
-    }
-    
-    // Create new buffer in heap
-    mpBuffer1 = new double[mBufferSize1];
-    mpBuffer2 = new double[mBufferSize2];
-    
-    initBuffer();
+    mReadIndex1 = 0;
+    mReadIndex2 = 0;
+    mFreq = 1.;
+    getAmp();
 }
 
-void AmpMod::getBufferSize() {
-    // Get Frequency from GUI
+void AmpMod::initPos() {
     mFreq = GetParam(kFreq)->Value();
+    mFreq = floor(mFreq * 10 + 0.5)/10;
+    
+    // Find the global position in the project
+    int pos1 = (int) GetSamplePos();
+    int pos2 = (int) GetSamplePos();
     
     // Compute Period
     mBufferSize1 = floor(GetSampleRate() / mFreq);
     mBufferSize2 = floor(GetSampleRate() / mFreq);
+    
+    // Get position with respect to the modulation wave
+    if (mBufferSize1 != 0 && mBufferSize2 != 0) {
+        mReadIndex1 = pos1 % mBufferSize1;
+        mReadIndex2 = pos2 % mBufferSize2;
+    }
+    else {
+        mReadIndex1 = 0;
+        mReadIndex2 = 0;
+    }
+}
+
+void AmpMod::getAmp() {
+    mProb = GetParam(kProb)->Value()/100;
+    
+    // Get triangle and square wave amplitude
+    if (mReadIndex1 < floor(mBufferSize1/2)) {
+        mAmp1 = mProb*abs((2/M_PI)*asin(sin(M_PI*mFreq*mReadIndex1/GetSampleRate()))) + (1-mProb);
+        mAmp2 = mProb*abs((2/M_PI)*asin(sin(M_PI*mFreq*mReadIndex2/GetSampleRate()))) + (1-mProb);
+    }
+    else {
+      mAmp1 = mProb*abs((2/M_PI)*asin(sin(M_PI*mFreq*mReadIndex1/GetSampleRate())));
+      mAmp2 = mProb*abs((2/M_PI)*asin(sin(M_PI*mFreq*mReadIndex2/GetSampleRate())));
+    }
 }
 
 void AmpMod::OnParamChange(int paramIdx) {
-    // Set Buffer Size
-    getBufferSize();
-
-    // Delete buffer if already there
-    if(mpBuffer1) {
-        delete [] mpBuffer1;
-    }
-    if(mpBuffer2) {
-        delete [] mpBuffer2;
-    }
-
-    // Create new buffer in heap
-    mpBuffer1 = new double[mBufferSize1];
-    mpBuffer2 = new double[mBufferSize2];
-
-    initBuffer();
+    mFreq = 1.;
+    initPos();
+    getAmp();
 }
 #endif
